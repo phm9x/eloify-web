@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useModelKey } from "@/data/useModelKey";
 import { resolveModel } from "@/core/elo";
@@ -27,12 +28,20 @@ export function Players() {
           return (
             <ul className="divide-y divide-slate-800">
               {ranked.map((s) => (
-                <li key={s.name} className="flex items-center justify-between py-3">
-                  <span className="font-medium">{s.name}</span>
-                  <span className="text-slate-400">
-                    <span className="font-semibold text-slate-200">{fmtRating(s.rating)}</span>
-                    <span className="ml-2 text-sm">· {s.games} games</span>
-                  </span>
+                <li key={s.name}>
+                  <Link
+                    to={`/history?player=${encodeURIComponent(s.name)}`}
+                    className="-mx-2 flex items-center justify-between rounded-lg px-2 py-3 active:bg-slate-800"
+                  >
+                    <span className="font-medium">{s.name}</span>
+                    <span className="flex items-center text-slate-400">
+                      <span className="font-semibold text-slate-200">{fmtRating(s.rating)}</span>
+                      <span className="ml-2 text-sm">· {s.games} games</span>
+                      <span className="ml-2 text-slate-600" aria-hidden>
+                        ›
+                      </span>
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>

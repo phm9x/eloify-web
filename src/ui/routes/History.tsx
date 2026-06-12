@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useModelKey } from "@/data/useModelKey";
 import { resolveModel } from "@/core/elo";
@@ -58,8 +59,18 @@ function historyRows(
 export function History() {
   const state = useSnapshot();
   const [modelKey, setModelKey] = useModelKey();
-  const [player, setPlayer] = useState("");
+  const [searchParams] = useSearchParams();
+  const [player, setPlayer] = useState(() => searchParams.get("player") ?? "");
   const [opponent, setOpponent] = useState("");
+
+  // Follow the ?player= param (e.g. arriving from the Players tab).
+  useEffect(() => {
+    const p = searchParams.get("player");
+    if (p) {
+      setPlayer(p);
+      setOpponent("");
+    }
+  }, [searchParams]);
 
   // Default the player selection once data arrives.
   const players = state.data?.players ?? [];
