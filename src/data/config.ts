@@ -19,12 +19,17 @@ export interface AppConfig {
   modelKey: string;
 }
 
-// Defaults mirror the CLI's config.py so a fresh install talks to the same sheet.
+// Defaults so a fresh install (incl. the home-screen PWA, which has its own
+// storage) connects automatically with no Settings step. Neither value is a
+// secret — the Worker URL is a public endpoint and the spreadsheet id is an
+// identifier; both are already visible in the app's network requests. The real
+// secret (the service-account key) lives only in the Worker. Both stay
+// overridable in Settings.
 export const DEFAULT_CONFIG: AppConfig = {
-  spreadsheetId: "",
+  spreadsheetId: "1pEy27j85mX0HunfIDY9U_18XEXf6Xn6FE08cgMV28b4",
   gamesGid: 0,
   playersGid: 207566793,
-  workerBaseUrl: "",
+  workerBaseUrl: "https://eloify.eloifyapp.workers.dev",
   sharedToken: "",
   modelKey: "provisional",
 };
