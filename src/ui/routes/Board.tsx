@@ -13,6 +13,7 @@ import {
   recordCols,
   type Column,
 } from "@/ui/components/LeaderboardTable";
+import { PlayerDetail } from "@/ui/components/PlayerDetail";
 import { fmtRating } from "@/ui/format";
 
 type View = "overall" | "singles" | "doubles";
@@ -52,6 +53,9 @@ export function Board() {
         {({ games, players }) => {
           const model = resolveModel(modelKey);
           const modes = replayModes(players, games, model);
+          const detail = (s: PlayerStats) => (
+            <PlayerDetail name={s.name} games={games} model={model} />
+          );
 
           if (view === "overall") {
             const ranked = leaderboard(modes.overall).filter((s) => s.games > 0);
@@ -65,7 +69,7 @@ export function Board() {
               { key: "doubles", header: "Doubles", align: "right", cell: (s) => cell(modes.doubles, s.name) },
               ...recordCols,
             ];
-            return <LeaderboardTable rows={ranked} columns={columns} />;
+            return <LeaderboardTable rows={ranked} columns={columns} renderDetail={detail} />;
           }
 
           const stats = view === "singles" ? modes.singles : modes.doubles;
@@ -74,7 +78,11 @@ export function Board() {
             return <p className="text-slate-500">No {view} games logged yet.</p>;
           }
           return (
-            <LeaderboardTable rows={ranked} columns={[ratingCol(view, "ELO"), ...recordCols]} />
+            <LeaderboardTable
+              rows={ranked}
+              columns={[ratingCol(view, "ELO"), ...recordCols]}
+              renderDetail={detail}
+            />
           );
         }}
       </DataGate>
