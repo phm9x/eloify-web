@@ -32,18 +32,30 @@ const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 // --- tiny helpers -----------------------------------------------------------
 
-function cors(env: Env): Record<string, string> {
-  return {
-    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+/**
+ * CORS headers for a request. ALLOWED_ORIGIN may be "*", a single origin, or a
+ * comma-separated allowlist (e.g. the Pages URL + localhost for dev). For a
+ * list we echo back the request's Origin if it matches, so multiple origins
+ * work without weakening to "*".
+ */
+function cors(req: Request, env: Env): Record<string, string> {
+  const base = {
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    Vary: "Origin",
   };
+  const raw = (env.ALLOWED_ORIGIN || "*").trim();
+  if (raw === "*") return { ...base, "Access-Control-Allow-Origin": "*" };
+  const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const origin = req.headers.get("Origin") ?? "";
+  const match = allowed.includes(origin) ? origin : allowed[0];
+  return { ...base, "Access-Control-Allow-Origin": match };
 }
 
-function json(data: unknown, env: Env, status = 200): Response {
+function json(data: unknown, req: Request, env: Env, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...cors(env) },
+    headers: { "Content-Type": "application/json", ...cors(req, env) },
   });
 }
 
@@ -188,24 +200,24 @@ async function appendRow(
 const GAMES_HEADERS = ["id", "played_at", "mode", "team_a", "team_b", "score_a", "score_b"];
 
 async function handle(req: Request, env: Env): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response(null, { headers: cors(env) });
-  if (!authorized(req, env)) return json({ error: "unauthorized" }, env, 401);
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors(req, env) });
+  if (!authorized(req, env)) return json({ error: "unauthorized" }, req, env, 401);
 
   const url = new URL(req.url);
   const spreadsheetId = url.searchParams.get("spreadsheetId");
   const gid = Number(url.searchParams.get("gid") ?? "0");
-  if (!spreadsheetId) return json({ error: "missing spreadsheetId" }, env, 400);
+  if (!spreadsheetId) return json({ error: "missing spreadsheetId" }, req, env, 400);
 
   const { pathname } = url;
 
   if (pathname === "/api/games" && req.method === "GET") {
     const { records } = await readRecords(env, spreadsheetId, gid);
-    return json({ games: records }, env);
+    return json({ games: records }, req, env);
   }
 
   if (pathname === "/api/players" && req.method === "GET") {
     const { records } = await readRecords(env, spreadsheetId, gid);
-    return json({ players: records }, env);
+    return json({ players: records }, req, env);
   }
 
   if (pathname === "/api/games" && req.method === "POST") {
@@ -214,7 +226,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
     const playedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
     const row = GAMES_HEADERS.map((h) => (h === "played_at" ? playedAt : (body[h] ?? "")));
     await appendRow(env, spreadsheetId, title, row);
-    return json({ ok: true }, env);
+    return json({ ok: true }, req, env);
   }
 
   if (pathname === "/api/players" && req.method === "POST") {
@@ -222,12 +234,12 @@ async function handle(req: Request, env: Env): Promise<Response> {
     const title = await titleForGid(env, spreadsheetId, gid);
     const createdAt = new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
     await appendRow(env, spreadsheetId, title, [body.name, createdAt]);
-    return json({ ok: true }, env);
+    return json({ ok: true }, req, env);
   }
 
   if (pathname === "/api/games/last" && req.method === "DELETE") {
     const { title, records } = await readRecords(env, spreadsheetId, gid);
-    if (records.length === 0) return json({ ok: true, deleted: false }, env);
+    if (records.length === 0) return json({ ok: true, deleted: false }, req, env);
     void title;
     // deleteDimension is 0-based over the whole grid: header is row 0, so the
     // last data row index == number of data records.
@@ -246,10 +258,10 @@ async function handle(req: Request, env: Env): Promise<Response> {
       }),
     });
     if (!res.ok) throw new Error(`batchUpdate failed: ${res.status} ${await res.text()}`);
-    return json({ ok: true, deleted: true }, env);
+    return json({ ok: true, deleted: true }, req, env);
   }
 
-  return json({ error: "not found" }, env, 404);
+  return json({ error: "not found" }, req, env, 404);
 }
 
 export default {
@@ -257,7 +269,7 @@ export default {
     try {
       return await handle(req, env);
     } catch (e) {
-      return json({ error: String(e instanceof Error ? e.message : e) }, env, 500);
+      return json({ error: String(e instanceof Error ? e.message : e) }, req, env, 500);
     }
   },
 };

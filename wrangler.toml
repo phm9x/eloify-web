@@ -2,10 +2,11 @@ name = "eloify"
 main = "worker/index.ts"
 compatibility_date = "2025-06-01"
 
-# Set this to your Cloudflare Pages URL once deployed (locks CORS to the app).
-# Leave unset / "*" during local development.
+# CORS allowlist (comma-separated). The Worker echoes the request Origin when it
+# matches one of these, so the deployed Pages app and local dev both work without
+# falling back to "*".
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://eloify.pages.dev,http://localhost:5173"
 
 # Secrets (NOT stored here — set with wrangler):
 #   wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
