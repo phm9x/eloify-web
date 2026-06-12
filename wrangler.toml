@@ -1,0 +1,12 @@
+name = "eloify"
+main = "worker/index.ts"
+compatibility_date = "2025-06-01"
+
+# Set this to your Cloudflare Pages URL once deployed (locks CORS to the app).
+# Leave unset / "*" during local development.
+[vars]
+ALLOWED_ORIGIN = "*"
+
+# Secrets (NOT stored here — set with wrangler):
+#   wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
+#   wrangler secret put SHARED_TOKEN   # optional

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Touch-friendly, kiosk-first defaults. The iPad runs this full-screen in
+   Guided Access, so prevent text selection / tap-highlight chrome and keep
+   the surface dark to match the status-bar theme. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+    @apply bg-slate-950 text-slate-100 antialiased;
+  }
+}
