@@ -18,7 +18,9 @@ build/
 # Google service-account key — NEVER commit this
 sa-key.json
 *service-account*.json
+*serviceaccount*.json
 *.serviceaccount.json
+
 
 # Logs
 logs/
@@ -44,3 +46,6 @@ coverage/
 
 # Cloudflare
 .wrangler/
+
+# wrangler local dev secrets
+.dev.vars
