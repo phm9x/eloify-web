@@ -1,13 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const NAV: { to: string; label: string }[] = [
-  { to: "/board", label: "Board" },
-  { to: "/log", label: "Log Game" },
-  { to: "/players", label: "Players" },
-  { to: "/history", label: "History" },
+  { to: "/leaderboard", label: "Leaderboard" },
+  { to: "/add", label: "Add Game" },
   { to: "/odds", label: "Odds" },
-  { to: "/last", label: "Last" },
-  { to: "/models", label: "Models" },
+  { to: "/history", label: "History" },
   { to: "/settings", label: "Settings" },
 ];
 

@@ -2,26 +2,26 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useModelKey } from "@/data/useModelKey";
 import { resolveModel, expected, projectedScore } from "@/core/elo";
-import { replay, ratingTrend } from "@/core/engine";
+import { replay } from "@/core/engine";
+import { playerHistory, trendFromRows } from "@/core/playerHistory";
 import { DataGate } from "@/ui/components/DataGate";
 import { ModelPicker } from "@/ui/components/ModelPicker";
 import { PlayerSelect } from "@/ui/components/PlayerSelect";
 import { Sparkline } from "@/ui/components/Sparkline";
-import { Headshot } from "@/ui/components/Headshot";
 import { fmtRating } from "@/ui/format";
 
+// Combined view: a player's rating history plus, when an opponent is chosen,
+// the odds (win probability + projected score) and a head-to-head record.
 export function Odds() {
   const state = useSnapshot();
   const [modelKey, setModelKey] = useModelKey();
-  const [p1, setP1] = useState("");
-  const [p2, setP2] = useState("");
+  const [player, setPlayer] = useState("");
+  const [opponent, setOpponent] = useState("");
 
   const players = state.data?.players ?? [];
-  // Default to the first two distinct players once data arrives.
   useEffect(() => {
-    if (!p1 && players.length) setP1(players[0]);
-    if (!p2 && players.length > 1) setP2(players[1]);
-  }, [p1, p2, players]);
+    if (!player && players.length) setPlayer(players[0]);
+  }, [player, players]);
 
   return (
     <section>
@@ -33,61 +33,107 @@ export function Odds() {
       <DataGate state={state}>
         {({ games, players: known }) => {
           const model = resolveModel(modelKey);
-          const a = p1 || known[0] || "";
-          const b = p2 || known[1] || "";
-          const sameOrMissing = !a || !b || a === b;
+          const who = player || known[0] || "";
+          const rival = opponent && opponent !== who ? opponent : undefined;
 
           const stats = replay(known, games, model);
-          const r1 = stats.get(a)?.rating ?? model.startRating;
-          const r2 = stats.get(b)?.rating ?? model.startRating;
-          const p1Win = expected(r1, r2);
-          const favProb = Math.max(p1Win, 1 - p1Win);
-          const fav = p1Win >= 0.5 ? a : b;
-          const [favPts, dogPts] = projectedScore(favProb);
+          const r1 = stats.get(who)?.rating ?? model.startRating;
+          const r2 = rival ? (stats.get(rival)?.rating ?? model.startRating) : null;
+          const p1Win = r2 != null ? expected(r1, r2) : null;
+          const favProb = p1Win != null ? Math.max(p1Win, 1 - p1Win) : null;
+          const [favPts, dogPts] = favProb != null ? projectedScore(favProb) : [0, 0];
+          const favName = p1Win != null ? (p1Win >= 0.5 ? who : rival!) : "";
+
+          const rows = who ? playerHistory(games, who, model, rival) : [];
+          const trend = trendFromRows(rows);
+          const wins = rows.filter((r) => r.result === "W").length;
+          const losses = rows.length - wins;
 
           return (
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
-                <PlayerSelect label="Player 1" value={a} players={known} onChange={setP1} />
-                <PlayerSelect label="Player 2" value={b} players={known} onChange={setP2} />
+                <PlayerSelect label="Player" value={who} players={known} onChange={setPlayer} />
+                <PlayerSelect
+                  label="Opponent (for odds + head-to-head)"
+                  value={opponent}
+                  players={known.filter((p) => p !== who)}
+                  onChange={setOpponent}
+                  allowNone
+                  noneLabel="— none —"
+                />
               </div>
 
-              {sameOrMissing ? (
-                <p className="text-slate-500">Pick two different players.</p>
+              {/* odds (only with an opponent) */}
+              {p1Win != null && rival && (
+                <div className="rounded-xl bg-slate-900 p-4">
+                  <div className="flex items-center justify-between text-lg">
+                    <span>
+                      <span className="font-semibold">{who}</span>{" "}
+                      <span className="text-slate-400">{fmtRating(r1)}</span>{" "}
+                      <span className="font-bold">{Math.round(p1Win * 100)}%</span>
+                    </span>
+                    <span className="text-sm text-slate-500">vs</span>
+                    <span className="text-right">
+                      <span className="font-bold">{Math.round((1 - p1Win) * 100)}%</span>{" "}
+                      <span className="text-slate-400">{fmtRating(r2!)}</span>{" "}
+                      <span className="font-semibold">{rival}</span>
+                    </span>
+                  </div>
+                  <div className="mt-2 text-center text-sm text-slate-400">
+                    projected{" "}
+                    <span className="font-bold text-slate-200">
+                      {favPts}–{dogPts}
+                    </span>{" "}
+                    {favName}
+                  </div>
+                </div>
+              )}
+
+              {/* history */}
+              {rows.length === 0 ? (
+                <p className="text-slate-500">
+                  {rival ? `${who} hasn’t faced ${rival} yet.` : `${who} hasn’t played yet.`}
+                </p>
               ) : (
                 <>
-                  <div className="flex items-center justify-center gap-6 rounded-xl bg-slate-900 p-6">
-                    <div className="text-center">
-                      <Headshot name={a} />
-                      <div className="mt-2 font-semibold">{a}</div>
-                      <div className="text-sm text-slate-400">{fmtRating(r1)}</div>
-                      <div className="mt-1 text-2xl font-bold">{Math.round(p1Win * 100)}%</div>
+                  <div className="rounded-xl bg-slate-900 p-4">
+                    <div className="mb-1 text-sm text-slate-400">
+                      {rival ? `${who} vs ${rival}` : who} · {wins}-{losses} · {model.label}
                     </div>
-                    <div className="text-center text-slate-500">
-                      <div className="text-sm">vs</div>
-                      <div className="mt-2 text-sm">
-                        score{" "}
-                        <span className="font-bold text-slate-200">
-                          {favPts}–{dogPts}
-                        </span>
-                      </div>
-                      <div className="text-xs">{fav}</div>
-                    </div>
-                    <div className="text-center">
-                      <Headshot name={b} />
-                      <div className="mt-2 font-semibold">{b}</div>
-                      <div className="text-sm text-slate-400">{fmtRating(r2)}</div>
-                      <div className="mt-1 text-2xl font-bold">{Math.round((1 - p1Win) * 100)}%</div>
-                    </div>
+                    <Sparkline series={trend} height={104} />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {[a, b].map((who) => (
-                      <div key={who} className="rounded-xl bg-slate-900 p-4">
-                        <div className="text-sm text-slate-400">📈 {who}</div>
-                        <Sparkline series={ratingTrend(games, who, model)} className="mt-2" />
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700 text-slate-400">
+                          <th className="px-2 py-2 text-right font-medium">#</th>
+                          <th className="px-2 py-2 text-left font-medium">Result</th>
+                          <th className="px-2 py-2 text-right font-medium">Score</th>
+                          <th className="px-2 py-2 text-left font-medium">Opponent</th>
+                          <th className="px-2 py-2 text-right font-medium">ELO</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.slice(-15).reverse().map((r) => (
+                          <tr key={r.id} className="border-b border-slate-800/60">
+                            <td className="px-2 py-2 text-right text-slate-500">{r.id}</td>
+                            <td className="px-2 py-2">
+                              <span className={r.result === "W" ? "text-emerald-300" : "text-red-300"}>
+                                {r.result}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono">
+                              {r.mine}-{r.theirs}
+                            </td>
+                            <td className="px-2 py-2">{r.opponent}</td>
+                            <td className="px-2 py-2 text-right text-slate-400">
+                              {fmtRating(r.before)}→{fmtRating(r.after)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </>
               )}

@@ -159,4 +159,10 @@ export class Store {
       method: "DELETE",
     });
   }
+
+  async deleteGame(id: number): Promise<void> {
+    await request(this.config, `/api/games?gid=${this.config.gamesGid}&id=${id}`, {
+      method: "DELETE",
+    });
+  }
 }

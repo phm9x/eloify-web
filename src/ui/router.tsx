@@ -1,12 +1,9 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { App } from "@/ui/App";
-import { Board } from "@/ui/routes/Board";
-import { Players } from "@/ui/routes/Players";
-import { History } from "@/ui/routes/History";
+import { Leaderboard } from "@/ui/routes/Leaderboard";
+import { AddGame } from "@/ui/routes/AddGame";
 import { Odds } from "@/ui/routes/Odds";
-import { Last } from "@/ui/routes/Last";
-import { Models } from "@/ui/routes/Models";
-import { LogGame } from "@/ui/routes/LogGame";
+import { History } from "@/ui/routes/History";
 import { Settings } from "@/ui/routes/Settings";
 
 export const router = createBrowserRouter([
@@ -14,16 +11,13 @@ export const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Navigate to="/board" replace /> },
-      { path: "board", element: <Board /> },
-      { path: "log", element: <LogGame /> },
-      { path: "players", element: <Players /> },
-      { path: "history", element: <History /> },
+      { index: true, element: <Navigate to="/leaderboard" replace /> },
+      { path: "leaderboard", element: <Leaderboard /> },
+      { path: "add", element: <AddGame /> },
       { path: "odds", element: <Odds /> },
-      { path: "last", element: <Last /> },
-      { path: "models", element: <Models /> },
+      { path: "history", element: <History /> },
       { path: "settings", element: <Settings /> },
-      { path: "*", element: <Navigate to="/board" replace /> },
+      { path: "*", element: <Navigate to="/leaderboard" replace /> },
     ],
   },
 ]);

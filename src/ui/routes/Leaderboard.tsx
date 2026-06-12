@@ -19,7 +19,7 @@ import { fmtRating } from "@/ui/format";
 type View = "overall" | "singles" | "doubles";
 const VIEWS: View[] = ["overall", "singles", "doubles"];
 
-export function Board() {
+export function Leaderboard() {
   const state = useSnapshot();
   const [modelKey, setModelKey] = useModelKey();
   const [view, setView] = useState<View>("overall");
@@ -27,7 +27,7 @@ export function Board() {
   return (
     <section>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Board</h1>
+        <h1 className="text-2xl font-bold">Leaderboard</h1>
         <div className="flex items-center gap-3">
           <ModelPicker value={modelKey} onChange={setModelKey} />
           <RefreshButton onClick={state.refresh} busy={state.loading} />

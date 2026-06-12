@@ -195,6 +195,34 @@ async function appendRow(
   if (!res.ok) throw new Error(`values.append failed: ${res.status} ${await res.text()}`);
 }
 
+/** Delete one row by its 0-based grid index (header is row 0). */
+async function deleteRow(
+  env: Env,
+  spreadsheetId: string,
+  gid: number,
+  gridRowIndex: number,
+): Promise<void> {
+  const res = await sheetsFetch(env, `/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId: gid,
+              dimension: "ROWS",
+              startIndex: gridRowIndex,
+              endIndex: gridRowIndex + 1,
+            },
+          },
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`batchUpdate failed: ${res.status} ${await res.text()}`);
+}
+
 // --- request handling -------------------------------------------------------
 
 const GAMES_HEADERS = ["id", "played_at", "mode", "team_a", "team_b", "score_a", "score_b"];
@@ -238,26 +266,21 @@ async function handle(req: Request, env: Env): Promise<Response> {
   }
 
   if (pathname === "/api/games/last" && req.method === "DELETE") {
-    const { title, records } = await readRecords(env, spreadsheetId, gid);
+    const { records } = await readRecords(env, spreadsheetId, gid);
     if (records.length === 0) return json({ ok: true, deleted: false }, req, env);
-    void title;
     // deleteDimension is 0-based over the whole grid: header is row 0, so the
     // last data row index == number of data records.
-    const lastIndex = records.length;
-    const res = await sheetsFetch(env, `/${spreadsheetId}:batchUpdate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: [
-          {
-            deleteDimension: {
-              range: { sheetId: gid, dimension: "ROWS", startIndex: lastIndex, endIndex: lastIndex + 1 },
-            },
-          },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`batchUpdate failed: ${res.status} ${await res.text()}`);
+    await deleteRow(env, spreadsheetId, gid, records.length);
+    return json({ ok: true, deleted: true }, req, env);
+  }
+
+  if (pathname === "/api/games" && req.method === "DELETE") {
+    const id = url.searchParams.get("id");
+    const { records } = await readRecords(env, spreadsheetId, gid);
+    const idx = records.findIndex((r) => String(r.id) === String(id));
+    if (idx === -1) return json({ ok: true, deleted: false }, req, env);
+    // record index j (0-based among data rows) is grid row j+1 (header is row 0).
+    await deleteRow(env, spreadsheetId, gid, idx + 1);
     return json({ ok: true, deleted: true }, req, env);
   }
 

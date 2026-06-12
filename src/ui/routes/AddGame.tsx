@@ -9,6 +9,7 @@ import { Store } from "@/data/sheets";
 import { invalidateSnapshot } from "@/data/snapshot";
 import { DataGate } from "@/ui/components/DataGate";
 import { ModelPicker } from "@/ui/components/ModelPicker";
+import { RecentGames } from "@/ui/components/RecentGames";
 import { fmtRating, fmtDelta } from "@/ui/format";
 
 type Banner = { kind: "ok" | "err"; text: string } | null;
@@ -19,7 +20,7 @@ function canonical(token: string, known: string[]): string {
   return hit ?? token.trim();
 }
 
-export function LogGame() {
+export function AddGame() {
   const state = useSnapshot();
   const [modelKey, setModelKey] = useModelKey();
 
@@ -46,7 +47,7 @@ export function LogGame() {
   return (
     <section>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Log Game</h1>
+        <h1 className="text-2xl font-bold">Add Game</h1>
         <ModelPicker value={modelKey} onChange={setModelKey} />
       </div>
 
@@ -263,6 +264,12 @@ export function LogGame() {
                 >
                   Undo last
                 </button>
+              </div>
+
+              {/* recent games for context while logging */}
+              <div className="pt-2">
+                <h2 className="mb-1 text-sm font-semibold text-slate-300">Recent games</h2>
+                <RecentGames games={games} count={10} />
               </div>
             </div>
           );

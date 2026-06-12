@@ -6,6 +6,7 @@ import {
   isConfigured,
   type AppConfig,
 } from "@/data/config";
+import { ModelSection } from "@/ui/components/ModelSection";
 
 type Field = {
   key: keyof AppConfig;
@@ -129,6 +130,9 @@ export function Settings() {
         </button>
         {saved && <span className="text-sm text-emerald-300">Saved.</span>}
       </div>
+
+      <hr className="my-8 border-slate-800" />
+      <ModelSection />
     </section>
   );
 }
