@@ -10,8 +10,11 @@ import { RefreshButton } from "@/ui/components/RefreshButton";
 export function History() {
   const state = useSnapshot();
   const [n, setN] = useState(25);
+  const [filter, setFilter] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const players = state.data?.players ?? [];
 
   async function onDelete(game: Game) {
     const label = `#${game.id}: ${game.teamA.join(" & ")} ${game.scoreA}–${game.scoreB} ${game.teamB.join(" & ")}`;
@@ -33,7 +36,7 @@ export function History() {
 
   return (
     <section>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">History</h1>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2 text-sm text-slate-400">
@@ -51,12 +54,49 @@ export function History() {
         </div>
       </div>
 
+      {/* player filter */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-slate-400"
+        >
+          <option value="">All players</option>
+          {players.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        {filter && (
+          <button
+            onClick={() => setFilter("")}
+            className="rounded-full bg-slate-800 px-3 py-1.5 text-sm text-slate-200 active:bg-slate-700"
+          >
+            Filtering: <span className="font-semibold">{filter}</span> ✕
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="mb-4 rounded-lg bg-red-900/40 px-3 py-2 text-sm text-red-200">{error}</div>
       )}
 
       <DataGate state={state}>
-        {({ games }) => <RecentGames games={games} count={n} onDelete={onDelete} busyId={busyId} />}
+        {({ games }) => {
+          const shown = filter
+            ? games.filter((g) => g.teamA.includes(filter) || g.teamB.includes(filter))
+            : games;
+          return (
+            <RecentGames
+              games={shown}
+              count={n}
+              onDelete={onDelete}
+              busyId={busyId}
+              onPlayerClick={setFilter}
+            />
+          );
+        }}
       </DataGate>
     </section>
   );
