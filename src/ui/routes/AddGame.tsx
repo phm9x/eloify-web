@@ -10,14 +10,18 @@ import { invalidateSnapshot } from "@/data/snapshot";
 import { DataGate } from "@/ui/components/DataGate";
 import { ModelPicker } from "@/ui/components/ModelPicker";
 import { RecentGames } from "@/ui/components/RecentGames";
+import { PlayerField, emptySlot, type Slot } from "@/ui/components/PlayerField";
 import { fmtRating, fmtDelta } from "@/ui/format";
 
 type Banner = { kind: "ok" | "err"; text: string } | null;
 
-/** Map a typed token to a known player's canonical casing, else keep as-is (new). */
-function canonical(token: string, known: string[]): string {
-  const hit = known.find((n) => n.toLowerCase() === token.trim().toLowerCase());
-  return hit ?? token.trim();
+/** Resolve a slot to a canonical name + whether it's genuinely new. A name typed
+ *  in "new" mode that matches an existing player snaps back to that player. */
+function resolveSlot(slot: Slot, known: string[]): { name: string; isNew: boolean } {
+  const t = slot.name.trim();
+  if (!slot.isNew) return { name: t, isNew: false };
+  const hit = known.find((k) => k.toLowerCase() === t.toLowerCase());
+  return hit ? { name: hit, isNew: false } : { name: t, isNew: true };
 }
 
 export function AddGame() {
@@ -25,8 +29,8 @@ export function AddGame() {
   const [modelKey, setModelKey] = useModelKey();
 
   const [mode, setMode] = useState<Mode>("1v1");
-  const [teamA, setTeamA] = useState<string[]>(["", ""]);
-  const [teamB, setTeamB] = useState<string[]>(["", ""]);
+  const [teamA, setTeamA] = useState<Slot[]>([emptySlot(), emptySlot()]);
+  const [teamB, setTeamB] = useState<Slot[]>([emptySlot(), emptySlot()]);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,11 +38,11 @@ export function AddGame() {
 
   const size = mode === "1v1" ? 1 : 2;
 
-  function setName(team: "A" | "B", i: number, value: string) {
+  function setSlot(team: "A" | "B", i: number, slot: Slot) {
     const setter = team === "A" ? setTeamA : setTeamB;
     setter((prev) => {
       const next = [...prev];
-      next[i] = value;
+      next[i] = slot;
       return next;
     });
     setBanner(null);
@@ -54,12 +58,16 @@ export function AddGame() {
       <DataGate state={state}>
         {({ games, players: known }) => {
           const model = resolveModel(modelKey);
-          const a = teamA.slice(0, size).map((n) => canonical(n, known));
-          const b = teamB.slice(0, size).map((n) => canonical(n, known));
+          const ra = teamA.slice(0, size).map((s) => resolveSlot(s, known));
+          const rb = teamB.slice(0, size).map((s) => resolveSlot(s, known));
+          const a = ra.map((r) => r.name);
+          const b = rb.map((r) => r.name);
           const allNames = [...a, ...b];
           const filled = allNames.every((n) => n.length > 0);
           const distinct = new Set(allNames.map((n) => n.toLowerCase())).size === allNames.length;
-          const newPlayers = allNames.filter((n) => !known.some((k) => k.toLowerCase() === n.toLowerCase()));
+          const newPlayers = [...ra, ...rb].filter((r) => r.isNew && r.name).map((r) => r.name);
+          // existing players already chosen, to hide from the other dropdowns
+          const chosen = [...teamA, ...teamB].filter((s) => !s.isNew && s.name).map((s) => s.name);
 
           const sa = Number(scoreA);
           const sb = Number(scoreB);
@@ -102,8 +110,8 @@ export function AddGame() {
               invalidateSnapshot();
               state.refresh();
               setBanner({ kind: "ok", text: `Logged game #${nextId}.` });
-              setTeamA(["", ""]);
-              setTeamB(["", ""]);
+              setTeamA([emptySlot(), emptySlot()]);
+              setTeamB([emptySlot(), emptySlot()]);
               setScoreA("");
               setScoreB("");
             } catch (e) {
@@ -134,12 +142,6 @@ export function AddGame() {
 
           return (
             <div className="max-w-2xl space-y-6">
-              <datalist id="known-players">
-                {known.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-
               {/* mode toggle */}
               <div className="inline-flex rounded-full bg-slate-800/60 p-1">
                 {(["1v1", "2v2"] as Mode[]).map((m) => (
@@ -162,7 +164,7 @@ export function AddGame() {
               {/* teams */}
               <div className="grid gap-4 sm:grid-cols-2">
                 {(["A", "B"] as const).map((team) => {
-                  const values = team === "A" ? teamA : teamB;
+                  const slots = team === "A" ? teamA : teamB;
                   const score = team === "A" ? scoreA : scoreB;
                   const setScore = team === "A" ? setScoreA : setScoreB;
                   return (
@@ -172,16 +174,13 @@ export function AddGame() {
                       </div>
                       <div className="space-y-2">
                         {Array.from({ length: size }).map((_, i) => (
-                          <input
+                          <PlayerField
                             key={i}
-                            list="known-players"
-                            value={values[i] ?? ""}
-                            onChange={(e) => setName(team, i, e.target.value)}
-                            placeholder={`Player ${i + 1}`}
-                            autoCapitalize="off"
-                            autoCorrect="off"
-                            spellCheck={false}
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-base outline-none focus:border-slate-400"
+                            slot={slots[i] ?? emptySlot()}
+                            known={known}
+                            taken={chosen}
+                            placeholder={`Select player ${i + 1}`}
+                            onChange={(slot) => setSlot(team, i, slot)}
                           />
                         ))}
                       </div>
