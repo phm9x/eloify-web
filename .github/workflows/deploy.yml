@@ -1,0 +1,52 @@
+name: Deploy
+
+# Push to main -> run tests, build, then deploy the app (Cloudflare Pages) and
+# the Worker (Cloudflare Workers). Keeps the existing eloify.pages.dev URL and
+# the eloify Worker. Secrets required (repo Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   - token with Pages:Edit + Workers Scripts:Edit
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account id
+#
+# The Worker's GOOGLE_SERVICE_ACCOUNT_JSON secret is stored in Cloudflare and is
+# preserved across deploys — it is NOT needed here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy app (Cloudflare Pages)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=eloify --branch=main --commit-dirty=true
+
+      - name: Deploy Worker (Cloudflare Workers)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
