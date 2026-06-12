@@ -39,6 +39,14 @@ function splitTeam(cell: string): string[] {
     .filter(Boolean);
 }
 
+/** Normalize a user-entered Worker URL: trim, add https:// if no scheme, drop
+ *  trailing slash. Forgives "eloify.example.workers.dev" → full https URL. */
+export function normalizeBaseUrl(url: string): string {
+  let u = url.trim().replace(/\/+$/, "");
+  if (u && !/^https?:\/\//i.test(u)) u = `https://${u}`;
+  return u;
+}
+
 function recordToGame(rec: GameRecord): Game {
   return {
     id: Number(rec.id),
@@ -64,8 +72,13 @@ async function request<T>(
       "Not configured. Set the spreadsheet ID and Worker URL in Settings.",
     );
   }
-  const base = config.workerBaseUrl.replace(/\/$/, "");
-  const url = new URL(base + path);
+  const base = normalizeBaseUrl(config.workerBaseUrl);
+  let url: URL;
+  try {
+    url = new URL(base + path);
+  } catch {
+    throw new SheetsError(`Worker URL looks invalid: "${config.workerBaseUrl}".`);
+  }
   url.searchParams.set("spreadsheetId", config.spreadsheetId);
 
   const headers: Record<string, string> = {
