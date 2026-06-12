@@ -157,6 +157,15 @@ export function getModel(key: string | null | undefined): Model {
   return model;
 }
 
+/** Like getModel but never throws — an unknown key falls back to the default. */
+export function resolveModel(key: string | null | undefined): Model {
+  try {
+    return getModel(key);
+  } catch {
+    return defaultModel();
+  }
+}
+
 // --- concrete models --------------------------------------------------------
 
 function mean(xs: number[]): number {

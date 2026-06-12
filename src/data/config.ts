@@ -23,7 +23,7 @@ export interface AppConfig {
 export const DEFAULT_CONFIG: AppConfig = {
   spreadsheetId: "",
   gamesGid: 0,
-  playersGid: 604449976,
+  playersGid: 207566793,
   workerBaseUrl: "",
   sharedToken: "",
   modelKey: "provisional",
@@ -42,6 +42,11 @@ export function loadConfig(): AppConfig {
 
 export function saveConfig(config: AppConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+}
+
+/** Persist a single field without disturbing the rest of the config. */
+export function patchConfig<K extends keyof AppConfig>(key: K, value: AppConfig[K]): void {
+  saveConfig({ ...loadConfig(), [key]: value });
 }
 
 /** True once the minimum needed to reach data (Worker + spreadsheet) is set. */

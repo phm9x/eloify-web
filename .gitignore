@@ -15,6 +15,10 @@ build/
 .env.*
 !.env.example
 *.local
+# Google service-account key — NEVER commit this
+sa-key.json
+*service-account*.json
+*.serviceaccount.json
 
 # Logs
 logs/
